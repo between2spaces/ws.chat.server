@@ -1,0 +1,18 @@
+{
+  "name": "ws.chat.server",
+  "version": "1.0.0",
+  "description": "WebSocket chat server and example client",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Between2Spaces",
+  "license": "GPLv3",
+  "dependencies": {
+    "ws": "^7.4.2"
+  },
+  "devDependencies": {
+    "eslint": "^7.16.0",
+    "eslint-config-mdcs": "^5.0.0"
+  }
+}

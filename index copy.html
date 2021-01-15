@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>example client</title>
+    </head>
+    <body>
+        <script src="./encoding.js"></script>
+        <script src="./example_client.js"></script>
+        <select id="keydates_dropdown">
+            <option>May 2021</option>
+            <option>April 2021</option>
+            <option>March 2021</option>
+        </select>
+        <script>
+            function onKeyDatesPopulated() {
+                const months = [ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" ];
+                const date = new Date();
+                const current = months[ date.getMonth() ] + " " + date.getFullYear();
+
+                var keydates_dropdown = document.getElementById( "keydates_dropdown" );
+
+                for ( var i = 0; i < keydates_dropdown.options.length; i++ ) {
+                    var option = keydates_dropdown.options[ i ];
+                    var text = option.textContent;
+                    if ( text === current ) {
+                        keydates_dropdown.selectedIndex = i;
+                        return;
+                    }
+                    if ( i > 0 && ( new Date( text ) ) - date < 0 ) {
+                        keydates_dropdown.selectedIndex = i - 1;
+                        return;
+                    }
+                }
+
+                keydates_dropdown.selectedIndex = i - 1;
+            }
+            onKeyDatesPopulated();
+        </script>
+    </body>
+</html>

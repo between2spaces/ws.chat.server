@@ -15,7 +15,7 @@
     "url": "https://github.com/between2spaces/ws.chat.server.git"
   },
   "dependencies": {
-    "ws": "^7.4.2"
+    "ws": "^7.4.5"
   },
   "devDependencies": {
     "eslint": "^7.16.0",

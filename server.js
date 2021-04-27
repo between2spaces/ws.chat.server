@@ -6,50 +6,69 @@ const encoding = require( './encoding.js' );
 
 const port = 8500;
 const wss = new WebSocket.Server( { port: port } );
-const ws_clients_by_csrftoken = {};
+const ws_clients_by_id = {};
 
+const requests = {};
 
 wss.on( 'connection', function connection( ws, req ) {
 
-	var csrftoken = req.headers[ 'cookie' ].replace( /.*csrftoken=(\w+).*/, "$1" );
-
-	if ( ! ( csrftoken in ws_clients_by_csrftoken ) ) {
-
-		ws.csrftoken = csrftoken;
-		ws.last_heard = ( new Date() ).getTime();
-		ws_clients_by_csrftoken[ csrftoken ] = ws;
-		console.log( `${csrftoken} connected` );
-		ws.send( encoding.encode( [ 'welcome', csrftoken ] ) );
-		broadcast( encoding.encode( [ 'connected', csrftoken ] ), ws );
-
-	}
+	ws.id = 'Guest-' + s4();
+	ws.last_heard = ( new Date() ).getTime();
 
 	ws.on( 'pong', () => {
 
-		ws_clients_by_csrftoken[ csrftoken ].last_heard = ( new Date() ).getTime();
-
-		console.log( `pong ${csrftoken} ${ws_clients_by_csrftoken[ csrftoken ].last_heard}` );
+		if ( ! ws_clients_by_id.hasOwnProperty( ws.id ) ) return;
+		ws_clients_by_id[ ws.id ].last_heard = ( new Date() ).getTime();
+		console.log( `pong ${ws.id} ${ws_clients_by_id[ ws.id ].last_heard}` );
 
 	} );
 
 	ws.on( 'message', message => {
 
-		encoded_message = message.buffer.slice( message.byteOffset, message.byteOffset + message.byteLength );
-		decoded_message = encoding.decode( message );
-		console.log( `${csrftoken}: ${decoded_message}` );
-		broadcast( encoded_message );
+		var encoded_message = message.buffer.slice( message.byteOffset, message.byteOffset + message.byteLength );
+		var decoded_message = encoding.decode( encoded_message );
+		console.log( `${ws.id}: ${decoded_message}` );
+
+		if ( ! Array.isArray( decoded_message ) ) return;
+
+		var request = decoded_message.shift();
+
+		requests.hasOwnProperty( request ) && requests[ request ]( ws, ...decoded_message );
 
 	} );
+
+	ws_clients_by_id[ ws.id ] = ws;
+
+	send( ws, [ 'connected', ws.id ] );
 
 } );
 
 
 
-function broadcast( data, origin_ws ) {
+function s4() {
+
+	return Math.floor( ( 1 + Math.random() ) * 0x10000 ).toString( 16 ).substring( 1 );
+
+}
+
+
+
+function send( ws, message ) {
+
+	console.log( `${ws.id} ${message}` );
+
+	ws.send( encoding.encode( message ) );
+
+}
+
+
+function broadcast( origin_ws, message ) {
+
+	var encoded_message = encoding.encode( message );
 
 	wss.clients.forEach( ws => {
 
-		if ( ws !== origin_ws ) ws.send( data );
+		if ( ws !== origin_ws ) ws.send( encoded_message );
 
 	} );
 
@@ -65,16 +84,25 @@ setInterval( () => {
 
 	var now = ( new Date() ).getTime();
 
-	for ( const csrftoken in ws_clients_by_csrftoken ) {
+	for ( const id in ws_clients_by_id ) {
 
-		var ws = ws_clients_by_csrftoken[ csrftoken ];
+		var ws = ws_clients_by_id[ id ];
 
 		if ( ws.last_heard < now - CLIENT_UPDATE_INTERVAL * 2 ) {
 
-			console.log( `${ws.csrftoken} disconnected` );
-			broadcast( encoding.encode( [ 'disconnected', ws.csrftoken ] ) );
-			delete ws_clients_by_csrftoken[ csrftoken ];
-			return ws.terminate();
+			if ( ! ws.identitied ) {
+
+				console.log( `${ws.id} failed to identify` );
+
+			} else {
+
+				console.log( `${ws.id} disconnected, ${id}` );
+				broadcast( ws, [ 'disconnected', ws.id ] );
+
+			}
+
+			delete ws_clients_by_id[ id ];
+			ws.terminate();
 
 		}
 
@@ -87,3 +115,30 @@ setInterval( () => {
 
 
 console.log( "local websocket chat server running at\n  => http://localhost:" + port + "/\nCTRL + C to shutdown" );
+
+
+
+requests.identifyas = ( ws, id ) => {
+
+	var welcome = ! ( id in ws_clients_by_id );
+
+	if ( ws.id !== id ) {
+
+		ws_clients_by_id[ id ] = ws;
+		delete ws_clients_by_id[ ws.id ];
+		ws.id = id;
+
+	}
+
+	ws.identitied = true;
+
+	if ( welcome ) broadcast( null, [ 'welcome', ws.id ] );
+
+};
+
+
+requests.say = ( ws, message ) => {
+
+	broadcast( ws, [ 'say', ws.id, message ] );
+
+};

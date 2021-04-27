@@ -7,26 +7,110 @@
 
 		constructor( url ) {
 
-			[ this.dom, this.messagesDom ] = createChatDom();
+			this.id = localStorage.getItem( 'id' );
+
+			this.dom = document.createElement( "div" );
+			this.dom.className = "ws-chat";
+
+			this.historyDom = document.createElement( "div" );
+			this.historyDom.className = "ws-chat-history";
+			this.dom.append( this.historyDom );
+
+			this.input = document.createElement( "input" );
+			this.input.className = "ws-chat-input";
+			this.input.setAttribute( "type", "text" );
+			this.input.setAttribute( "placeholder", "Type a message..." );
+			this.dom.append( this.input );
+
+			this.input.addEventListener( "keyup", event => {
+
+				var key = event.key;
+
+				if ( key === 'Enter' ) {
+
+					var command = this.input.value.trim();
+
+					if ( ! command.startsWith( '/' ) ) {
+
+						this.write( command );
+						this.say( command );
+
+					}
+
+					this.input.value = '';
+
+				}
+
+			} );
 
 			this.url = url;
-			this.ws = new WebSocket( url );
+
+			this.responses = {
+
+				connected: ( id ) => {
+
+					if ( ! this.id ) {
+
+						this.id = id;
+						localStorage.setItem( 'id', this.id );
+
+					}
+
+					this.send( [ 'identifyas', this.id ] );
+
+				},
+
+				welcome: ( id ) => {
+
+					this.write( `Welcome <span class="ws-chat-name">${id}</span>` );
+
+				},
+
+				say: ( id, message ) => {
+
+					this.write( `<span class="ws-chat-name">${id}:</span> ${message}` );
+
+				}
+
+			};
+
+			this.reconnect();
+
+		}
+
+		reconnect() {
+
+			this.ws = new WebSocket( this.url );
 			this.ws.binaryType = 'arraybuffer';
 
 			this.ws.onopen = () => {
-				//chat.send( 'connection open' );
+
+				console.log( 'WebSocket open' );
+
 			};
 
 			this.ws.onmessage = event => {
 
-				this.write( encoding.decode( event.data ) );
+				var message = encoding.decode( event.data );
+
+				this.write( message );
+
+				var response = message.shift();
+
+				this.write( response );
+
+				if ( 'function' === typeof this.responses[ response ] ) {
+
+					this.responses[ response ]( ...message );
+
+				}
 
 			};
 
-			this.ws.onclose = event => {
+			this.ws.onclose = () => {
 
-				console.log( event );
-				this.ws = null;
+				console.log( 'WebSocket closed, attempting reconnection...' );
+				this.reconnect();
 
 			};
 
@@ -73,47 +157,45 @@
 
 		write( text ) {
 
-			this.messagesDom.append( createMessageDom( text ) );
+			var now = new Date();
+			var minsec = `0${now.getHours()}`.slice( - 2 ) + ':' + `0${now.getMinutes()}`.slice( - 2 );
+
+			if ( ! this.lastwrite || this.lastwrite != minsec ) {
+
+				var timestamp = document.createElement( "div" );
+				timestamp.className = "ws-chat-timestamp";
+				timestamp.textContent = minsec;
+				this.historyDom.append( timestamp );
+
+			}
+
+
+			var message = document.createElement( "div" );
+			message.className = "ws-chat-message";
+
+			message.innerHTML += text;
+
+			this.historyDom.append( message );
+			this.historyDom.scrollTo( 0, this.historyDom.scrollHeight );
+
+			this.lastwrite = minsec;
 
 		}
 
-		say( message ) {
+		send( message ) {
 
 			this.ws && this.ws.send( encoding.encode( message ) );
 
 		}
 
-		whisper( name, whisper ) {
+		say( message ) {
+
+			this.send( [ 'say', message ] );
+
 		}
 
-	}
-
-
-	function createChatDom() {
-
-		var dom = document.createElement( "div" );
-		dom.className = "ws-chat";
-		var history = document.createElement( "div" );
-		history.className = "ws-chat-history";
-		dom.append( history );
-		var input = document.createElement( "input" );
-		input.className = "ws-chat-input";
-		input.setAttribute( "type", "text" );
-		input.setAttribute( "placeholder", "Type a message..." );
-		dom.append( input );
-
-		return [ dom, history ];
-
-	}
-
-
-	function createMessageDom( text ) {
-
-		var message = document.createElement( "div" );
-		message.className = "ws-chat-message";
-		message.textContent = text;
-
-		return message;
+		whisper( name, whisper ) {
+		}
 
 	}
 
@@ -129,6 +211,7 @@
 			position: absolute;
 			min-width: 10em;
 			min-height: 3em;
+			max-height: 100%;
 			left: 0;
 			right: 0;
 			top: 0;
@@ -144,6 +227,8 @@
 			flex: 1;
 			border: 1px solid orange;
 			word-wrap: break-word;
+			height: calc(100% - 2em);
+			overflow-y: auto;
 		}
 		.ws-chat-input {
 			flex: 1;
@@ -155,6 +240,17 @@
 			font-family: 'Courier New', monospace;
 			font-size: 2cm;
 			color: black;
+			caret-shape: block;
+		}
+		.ws-chat-message {
+			min-height: 0;
+		}
+		.ws-chat-timestamp {
+			color: #aaa;
+			margin-right: 0.5em;
+		}
+		.ws-chat-name {
+			color: #87d7f7;
 		}
 		`;
 		document.head.append( style );

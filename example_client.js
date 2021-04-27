@@ -261,9 +261,8 @@
 
 	window.Chat = Chat;
 
-	//const chat = new Chat( "ws://localhost:8500" );
-	//console.log( `ws://${location.hostname}:8500` );
-	const chat = new Chat( `${location.protocol.replace( "http", "ws" )}//${location.host}` );
+	var wschathost = location.host.startsWith( "localhost" ) ? location.host : "knowing-laced-tulip.glitch.me";
+	const chat = new Chat( `${location.protocol.replace( "http", "ws" )}//${wschathost}` );
 	document.body.append( chat.dom );
 
 

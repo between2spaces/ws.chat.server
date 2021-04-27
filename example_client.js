@@ -7,6 +7,8 @@
 
 		constructor( url ) {
 
+			console.log( `Chat ${url}` );
+
 			this.id = localStorage.getItem( 'id' );
 
 			this.dom = document.createElement( "div" );
@@ -261,7 +263,7 @@
 
 	//const chat = new Chat( "ws://localhost:8500" );
 	//console.log( `ws://${location.hostname}:8500` );
-	const chat = new Chat( `ws://${location.host}` );
+	const chat = new Chat( `${location.protocol.replace( "http", "ws" )}//${location.host}` );
 	document.body.append( chat.dom );
 
 

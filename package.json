@@ -9,7 +9,7 @@
   "author": "Between2Spaces",
   "license": "MIT",
   "engines": {
-    "node": "15.x"
+    "node": "10"
   },
   "repository": {
     "url": "https://github.com/between2spaces/ws.chat.server.git"

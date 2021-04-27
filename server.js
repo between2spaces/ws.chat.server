@@ -11,27 +11,7 @@ const httpserver = http.createServer( ( req, res ) => {
 
 	console.log( `${req.method} ${req.url}` );
 
-	if ( "POST" === req.method && ( "/git" === req.url || "/update" === req.url ) ) {
-
-		req.on( "data", function ( data ) {
-
-			var sig = "sha1=" + cryptojs.HmacSHA1( "" + data, process.env.SECRET ).toString( cryptojs.enc.Hex );
-
-			if ( sig !== req.headers[ "x-hub-signature" ] ) {
-
-				res.writeHead( 401, { "Content-Type": "application/json" } );
-				return res.end( '{"error": "Unauthorized"}', "utf-8" );
-
-			}
-
-			if ( "/git" === req.url && "push" === req.headers[ "x-github-event" ] ) gitPushWebhook();
-
-			res.writeHead( 200, { "Content-Type": "application/json" } );
-			return res.end( "{}", "utf-8" );
-
-		} );
-
-	} else if ( "GET" === req.method ) {
+	if ( "GET" === req.method ) {
 
 		var content = "";
 

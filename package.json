@@ -7,7 +7,13 @@
     "start": "node server.js"
   },
   "author": "Between2Spaces",
-  "license": "GPLv3",
+  "license": "MIT",
+  "engines": {
+    "node": "15.x"
+  },
+  "repository": {
+    "url": "https://github.com/between2spaces/ws.chat.server.git"
+  },
   "dependencies": {
     "ws": "^7.4.2"
   },

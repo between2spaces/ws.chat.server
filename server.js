@@ -2,15 +2,83 @@
 
 const WebSocket = require( 'ws' );
 const encoding = require( './encoding.js' );
+const http = require( "http" );
+const fs = require( "fs" );
 
 
-const port = 8500;
-const wss = new WebSocket.Server( { port: port } );
+
+const httpserver = http.createServer( ( req, res ) => {
+
+	console.log( `${req.method} ${req.url}` );
+
+	if ( "POST" === req.method && ( "/git" === req.url || "/update" === req.url ) ) {
+
+		req.on( "data", function ( data ) {
+
+			var sig = "sha1=" + cryptojs.HmacSHA1( "" + data, process.env.SECRET ).toString( cryptojs.enc.Hex );
+
+			if ( sig !== req.headers[ "x-hub-signature" ] ) {
+
+				res.writeHead( 401, { "Content-Type": "application/json" } );
+				return res.end( '{"error": "Unauthorized"}', "utf-8" );
+
+			}
+
+			if ( "/git" === req.url && "push" === req.headers[ "x-github-event" ] ) gitPushWebhook();
+
+			res.writeHead( 200, { "Content-Type": "application/json" } );
+			return res.end( "{}", "utf-8" );
+
+		} );
+
+	} else if ( "GET" === req.method ) {
+
+		var content = "";
+
+		try {
+
+			var filepath = "." + ( ( "/" === req.url ) ? "/index.html" : req.url );
+
+			console.log( `${filepath}` );
+
+			content = fs.readFileSync( filepath );
+
+			res.writeHead( 200, {
+				"Content-Type": {
+					html: "text/html",
+					js: "text/javascript",
+					css: "text/css",
+					json: "application/json"
+				}[ filepath.split( "." ).pop().toLowerCase() ] || "text/*"
+			} );
+
+		} catch ( err ) {
+
+			res.code = "ENOENT" === err.code ? 404 : 500, res.writeHead( res.code, { "Content-Type": "text/html" } ), content = "<!doctype html><html><head><title>PBBG</title></head><body>" + err.message + "</body></html>";
+
+		}
+
+		return res.end( content, "utf-8" );
+
+	}
+
+} );
+
+httpserver.listen( process.env.PORT, () => {
+
+	console.log( `Server started on port ${process.env.PORT}` );
+
+} );
+
+
+
 const ws_clients_by_id = {};
 
 const requests = {};
 
-wss.on( 'connection', function connection( ws, req ) {
+const wss = new WebSocket.Server( { server: httpserver } );
+
+wss.on( 'connection', ( ws, req ) => {
 
 	ws.id = 'Guest-' + s4();
 	ws.last_heard = ( new Date() ).getTime();
@@ -114,9 +182,6 @@ setInterval( () => {
 
 
 
-console.log( "local websocket chat server running at\n  => http://localhost:" + port + "/\nCTRL + C to shutdown" );
-
-
 
 requests.identifyas = ( ws, id ) => {
 
@@ -135,6 +200,8 @@ requests.identifyas = ( ws, id ) => {
 	if ( welcome ) broadcast( null, [ 'welcome', ws.id ] );
 
 };
+
+
 
 
 requests.say = ( ws, message ) => {

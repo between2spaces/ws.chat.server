@@ -260,8 +260,8 @@
 	window.Chat = Chat;
 
 	//const chat = new Chat( "ws://localhost:8500" );
-	console.log( `ws://${location.hostname}:8500` );
-	const chat = new Chat( `ws://jewel-band-verbena.glitch.me:8500` );
+	//console.log( `ws://${location.hostname}:8500` );
+	const chat = new Chat( `ws://${location.host}` );
 	document.body.append( chat.dom );
 
 

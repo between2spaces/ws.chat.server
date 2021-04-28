@@ -30,12 +30,15 @@
 
 				if ( key === 'Enter' ) {
 
-					var command = this.input.value.trim();
+					var message = this.input.value.trim();
 
-					if ( ! command.startsWith( '/' ) ) {
+					// remove XML/HTML markup from message
+					message = message.replace( /(<([^>]+)>)/ig, "" );
 
-						this.write( command );
-						this.say( command );
+					if ( ! message.startsWith( '/' ) ) {
+
+						this.write( `<span class="ws-chat-name">${this.id}:</span> ${message}` );
+						this.say( message );
 
 					}
 
@@ -95,11 +98,7 @@
 
 				var message = encoding.decode( event.data );
 
-				this.write( message );
-
 				var response = message.shift();
-
-				this.write( response );
 
 				if ( 'function' === typeof this.responses[ response ] ) {
 

@@ -9,8 +9,6 @@ const fs = require( "fs" );
 
 const httpserver = http.createServer( ( req, res ) => {
 
-	console.log( `${req.method} ${req.url}` );
-
 	if ( "GET" === req.method ) {
 
 		var content = "";
@@ -18,8 +16,6 @@ const httpserver = http.createServer( ( req, res ) => {
 		try {
 
 			var filepath = "." + ( ( "/" === req.url ) ? "/index.html" : req.url );
-
-			console.log( `${filepath}` );
 
 			content = fs.readFileSync( filepath );
 
@@ -51,8 +47,9 @@ httpserver.listen( process.env.PORT, () => {
 } );
 
 
+const ws_connection = {};
 
-const ws_clients_by_id = {};
+const ws_identified = {};
 
 const requests = {};
 
@@ -65,9 +62,8 @@ wss.on( 'connection', ( ws, req ) => {
 
 	ws.on( 'pong', () => {
 
-		if ( ! ws_clients_by_id.hasOwnProperty( ws.id ) ) return;
-		ws_clients_by_id[ ws.id ].last_heard = ( new Date() ).getTime();
-		console.log( `pong ${ws.id} ${ws_clients_by_id[ ws.id ].last_heard}` );
+		if ( ! ws_identified.hasOwnProperty( ws.id ) ) return;
+		ws_identified[ ws.id ].last_heard = ( new Date() ).getTime();
 
 	} );
 
@@ -75,6 +71,7 @@ wss.on( 'connection', ( ws, req ) => {
 
 		var encoded_message = message.buffer.slice( message.byteOffset, message.byteOffset + message.byteLength );
 		var decoded_message = encoding.decode( encoded_message );
+
 		console.log( `${ws.id}: ${decoded_message}` );
 
 		if ( ! Array.isArray( decoded_message ) ) return;
@@ -85,7 +82,7 @@ wss.on( 'connection', ( ws, req ) => {
 
 	} );
 
-	ws_clients_by_id[ ws.id ] = ws;
+	ws_connection[ ws.id ] = ws;
 
 	send( ws, [ 'connected', ws.id ] );
 
@@ -102,8 +99,6 @@ function s4() {
 
 
 function send( ws, message ) {
-
-	console.log( `${ws.id} ${message}` );
 
 	ws.send( encoding.encode( message ) );
 
@@ -132,24 +127,29 @@ setInterval( () => {
 
 	var now = ( new Date() ).getTime();
 
-	for ( const id in ws_clients_by_id ) {
+	for ( const id in ws_connection ) {
 
-		var ws = ws_clients_by_id[ id ];
+		var ws = ws_connection[ id ];
 
 		if ( ws.last_heard < now - CLIENT_UPDATE_INTERVAL * 2 ) {
 
-			if ( ! ws.identitied ) {
+			console.log( `${id} failed to identify` );
+			delete ws_connection[ id ];
+			ws.terminate();
 
-				console.log( `${ws.id} failed to identify` );
+		}
 
-			} else {
+	}
 
-				console.log( `${ws.id} disconnected, ${id}` );
-				broadcast( ws, [ 'disconnected', ws.id ] );
+	for ( const id in ws_identified ) {
 
-			}
+		var ws = ws_identified[ id ];
 
-			delete ws_clients_by_id[ id ];
+		if ( ws.last_heard < now - CLIENT_UPDATE_INTERVAL * 2 ) {
+
+			console.log( `${ws.id} disconnected, ${id}` );
+			broadcast( ws, [ 'disconnected', ws.id ] );
+			delete ws_identified[ id ];
 			ws.terminate();
 
 		}
@@ -165,19 +165,24 @@ setInterval( () => {
 
 requests.identifyas = ( ws, id ) => {
 
-	var welcome = ! ( id in ws_clients_by_id );
+	var welcome = false;
 
-	if ( ws.id !== id ) {
+	if ( ws_connection.hasOwnProperty( ws.id ) ) {
 
-		ws_clients_by_id[ id ] = ws;
-		delete ws_clients_by_id[ ws.id ];
-		ws.id = id;
+		delete ws_connection[ ws.id ];
+		welcome = ! ws_identified.hasOwnProperty( id );
 
 	}
 
-	ws.identitied = true;
+	ws_identified[ id ] = ws;
+	ws.id = id;
 
-	if ( welcome ) broadcast( null, [ 'welcome', ws.id ] );
+	if ( welcome ) {
+
+		console.log( `welcome ${ws.id}` );
+		broadcast( null, [ 'welcome', ws.id ] );
+
+	}
 
 };
 
@@ -186,6 +191,8 @@ requests.identifyas = ( ws, id ) => {
 
 requests.say = ( ws, message ) => {
 
+	// remove XML/HTML markup from message
+	message = message.replace( /(<([^>]+)>)/ig, "" );
 	broadcast( ws, [ 'say', ws.id, message ] );
 
 };

@@ -4,7 +4,7 @@
   "description": "WebSocket chat server and example client",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.mjs"
   },
   "author": "Between2Spaces",
   "license": "MIT",

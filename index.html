@@ -3,9 +3,18 @@
     <head>
         <meta charset="UTF-8">
         <title>example client</title>
+        <style>
+            body {
+                font-size: 0.5cm;
+            }
+        </style>
     </head>
     <body>
-        <script src="./encoding.js"></script>
-        <script src="./example_client.js"></script>
+        <script type="module">
+            import Chat from './chat.mjs';
+            var host = location.host.startsWith( "localhost" ) ? location.host : "knowing-laced-tulip.glitch.me";
+            const chat = new Chat( `${location.protocol.replace( "http", "ws" )}//${host}` );
+            document.body.append( chat.dom );
+        </script>
     </body>
 </html>

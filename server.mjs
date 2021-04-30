@@ -17,6 +17,7 @@ const requests = {};
 
 const blacklisted_names = [ 'undefined', 'null', 'name', 'admin', 'penis', 'dick', 'vagina', 'cunt', 'shit', 'dick' ];
 
+
 requests.ident = ( ws, id ) => {
 
 	id = id.trim();

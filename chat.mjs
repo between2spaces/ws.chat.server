@@ -325,11 +325,10 @@ if ( ! document.getElementById( "ws-chat-style" ) ) {
 			display: flex;
 			flex-direction: column;
 			position: absolute;
+			min-height: 4em;
 			min-width: 10em;
-			min-height: 3em;
-			max-height: 100%;
+			max-height: 50%;
 			width: 33%;
-			height: 50%;
 			left: 10px;
 			bottom: 20px;
 			overflow-x: hidden;
@@ -348,7 +347,8 @@ if ( ! document.getElementById( "ws-chat-style" ) ) {
 		}
 		.ws-chat-input {
 			flex: 1;
-			max-height: 2em;
+			max-height: 1.5em;
+			min-height: 1.5em;
 			border: 2px solid orange;
 			border-radius: 5px;
 			outline: none;
